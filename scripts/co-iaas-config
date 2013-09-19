@@ -1,0 +1,184 @@
+#!/bin/bash
+
+CO_VERSION="1.0a.0.01"
+INSTALL_DIR=$(dirname $0)
+
+platform='unknown'
+unamestr=$(uname)
+if [[ "$unamestr" == 'Linux' ]]; then
+   platform='linux'
+elif [[ "$unamestr" == 'FreeBSD' ]]; then
+   platform='freebsd'
+elif [[ "$unamestr" == 'Darwin' ]]; then
+   platform='darwin'
+fi
+
+function _help {
+  echo "Commandes :"
+  echo "    os_config  : Create a new OpenStack configuration"
+  echo "    aws_config : Create a new AWS configuration"
+  echo
+  echo "    help       : Display this help"
+  echo "    quit       : Quit"
+  echo
+}
+
+function _stop_if_running {
+  RUNNING=$(co-status 2>/dev/null | grep LISTEN | wc -l)
+  if [[ "$RUNNING" != "0" ]]; then
+    co-stop
+  fi
+}
+
+function _do_start {
+  echo -n "Restart CO ?[Y/n]"
+  read a
+  if [ "Z$a" == "ZN" ] || [ "Z$a" == "Zn" ] ; then
+    echo "Bye!"
+  else
+    cd $INSTALL_DIR
+    _stop_if_running
+    co-start
+  fi
+}
+
+function _quote {
+  echo $(echo $1 | sed -e 's/\//\\\//g')
+}
+
+# -- OpenStack configuration --
+
+function _check_os_config {
+  [ -f "$INSTALL_DIR/os_config.xml" ] || printf "<os_configs>\n</os_configs>\n" > "$INSTALL_DIR/os_config.xml"
+}
+
+function _os_config {
+  echo "Create a new configuration for OpenStack"; echo
+  _check_os_config
+
+  UUID_CONFIG=$(uuidgen)
+
+  echo -n "Your accords account name [accords]: "; read a
+  ACCORDS_ACCOUNT_NAME=$(_quote ${a:-accords})
+
+  while [[ "Z$OS_TENANT_NAME" == "Z" ]]; do
+    echo -n "You OpenStack tenant name : "; read a
+    OS_TENANT_NAME=$(_quote $a)
+  done
+
+  while [[ "Z$OS_KEYSTONE_URL" == "Z" ]]; do
+    echo -n "Your keystone endpoint (must be something like http://<host>:<port>/v2.0) : "; read a
+    OS_KEYSTONE_URL=$(_quote $a)
+  done
+
+  while [[ "Z$OS_USERNAME" == "Z" ]]; do
+    echo -n "Your OpenStack username : "; read a
+    OS_USERNAME=$(_quote $a)
+  done
+
+  while [[ "Z$OS_PASSWORD" == "Z" ]]; do
+    echo -n "Your OpenStack password : "; read a
+    OS_PASSWORD=$(_quote $a)
+  done
+
+  echo -n "Description for this configuration [OpenStack for $OS_USERNAME:$OS_TENANT_NAME]: "; read a
+  if [[ "Z$a" == "Z" ]]; then
+    CONFIG_DESCRIPTION=$(_quote "OpenStack for $OS_USERNAME:$OS_TENANT_NAME")
+  else
+    CONFIG_DESCRIPTION=$(_quote $a)
+  fi
+
+  OS_CONFIG='<os_config id="'$UUID_CONFIG'" tls="0" authenticate=" " name="'$ACCORDS_ACCOUNT_NAME'" namespace="'$OS_TENANT_NAME'" agent="CompatibleOne\/OpenStackClient\/'$CO_VERSION'" current="0" host="'$OS_KEYSTONE_URL'" version="v1.1" user="'$OS_USERNAME'" base="" password="'$OS_PASSWORD'" description="'$CONFIG_DESCRIPTION'" \/>'
+
+  sed -i 's/<\/os_configs>/'"$OS_CONFIG"'\n<\/os_configs>/' $INSTALL_DIR/os_config.xml
+
+  echo
+  echo "Configuration : $CONFIG_DESCRIPTION"
+  echo "File          : $INSTALL_DIR/os_config.xml"
+  echo "UUID          : $UUID_CONFIG"
+  echo
+}
+
+# -- AWS configuration --
+
+
+function _check_aws_config {
+  [ -f "$INSTALL_DIR/ec2config.xml" ] || printf "<ec2configs>\n</ec2configs>\n" > "$INSTALL_DIR/ec2config.xml"
+}
+
+function _aws_config {
+  echo "Create a new configuration for Amazon EC2"; echo
+  _check_aws_config
+
+  UUID_CONFIG=$(uuidgen)
+
+  echo -n "Your accords account name [accords]: "; read a
+  ACCORDS_ACCOUNT_NAME=$(_quote ${a:-amazonEc2})
+
+  [ -f $HOME/.ssh/id_dsa.pub ] && PK_DSA=$HOME/.ssh/id_dsa.pub
+  [ -f $HOME/.ssh/id_rsa.pub ] && PK_RSA=$HOME/.ssh/id_rsa.pub
+  PK_PATH=${PK_RSA:-${PK_DSA:-}}
+  while [[ "Z$SSH_PK_PATH" == "Z" ]]; do
+    echo -n "Path to your SSH public key[$PK_PATH] : "; read a
+    SSH_PK_PATH=$(_quote ${a:-$PK_PATH})
+  done
+
+  while [[ "Z$AWS_ACCESS_KEY" == "Z" ]]; do
+    echo -n "You AWS Access Key : "; read a
+    AWS_ACCESS_KEY=$(_quote $a)
+  done
+
+  while [[ "Z$AWS_SECRET_KEY" == "Z" ]]; do
+    echo -n "You AWS Secret Key : "; read a
+    AWS_SECRET_KEY=$(_quote $a)
+  done
+
+  echo -n "Your AWS location [us-east-1]: "; read a
+  AWS_LOCATION=$(_quote ${a:-us-east-1})
+
+  echo -n "Description for this configuration [EC2 at $AWS_LOCATION]: "; read a
+  if [[ "Z$a" == "Z" ]]; then
+    CONFIG_DESCRIPTION=$(_quote "EC2 at $AWS_LOCATION")
+  else
+    CONFIG_DESCRIPTION=$(_quote $a)
+  fi
+
+  EC2_CONFIG='<ec2config id="'$UUID_CONFIG'" tls="0" current="0" authenticate="'$SSH_PK_PATH'" name="'$ACCORDS_ACCOUNT_NAME'" accesskey="'$AWS_ACCESS_KEY'" namespace=" " location="'$AWS_LOCATION'" agent="CompatibleOne\/Ec2Client\/'$CO_VERSION'" secretkey="'$AWS_SECRET_KEY'" host=" " version="v1.1" user=" " base=" " password=" " description="'$CONFIG_DESCRIPTION'" \/>'
+
+  sed -i 's/<\/ec2configs>/'"$EC2_CONFIG"'\n<\/ec2configs>/' $INSTALL_DIR/ec2config.xml
+
+  echo
+  echo "Configuration : $CONFIG_DESCRIPTION"
+  echo "File          : $INSTALL_DIR/ec2config.xml"
+  echo "UUID          : $UUID_CONFIG"
+  echo
+}
+
+# -- main --
+
+echo "co-iaas-config - Configuration for Accords Platform"
+echo "Configuration path : $INSTALL_DIR"
+_help
+
+while [[ true ]]; do
+  echo -n "> "; read ACTION
+  case "$ACTION" in
+    os_config)
+         _os_config
+         ;;
+    aws_config)
+         _aws_config
+         ;;
+    quit)
+         _do_start
+         exit 0
+         ;;
+    help)
+         _help
+         ;;
+    *)
+         echo "Unknow command \"$ACTION\""
+         _help
+         ;;
+  esac
+done

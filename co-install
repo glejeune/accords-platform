@@ -1,0 +1,99 @@
+#!/bin/bash
+
+INSTALL_DIR=${1:-~/accords}
+
+platform='unknown'
+unamestr=$(uname)
+if [[ "$unamestr" == 'Linux' ]]; then
+   platform='linux'
+elif [[ "$unamestr" == 'FreeBSD' ]]; then
+   platform='freebsd'
+elif [[ "$unamestr" == 'Darwin' ]]; then
+   platform='darwin'
+fi
+
+function _abort_if_running {
+  RUNNING=$(co-status 2>/dev/null | grep LISTEN | wc -l)
+  if [[ "$RUNNING" != "0" ]]; then 
+    echo "CO is running, please stop it and relaunch this script!"
+    exit 0
+  fi
+}
+
+function _abort_if_no_libcocci {
+  if [[ "$platform" == "linux" ]]; then
+    LIBCOCCI_FOUND=$(ldconfig -v 2>/dev/null | grep libcocci | wc -l)
+    if [[ "$LIBCOCCI_FOUND" == "0" ]]; then
+      echo "Can't find libcocci library. Make sure that you have properly installed CO"
+      echo "or update your LD_LIBRARY_PATH"
+      exit 1;
+    fi
+  else
+    echo 
+    # TODO
+  fi
+}
+
+function _do_config {
+  mkdir -p $INSTALL_DIR
+  mkdir -p $INSTALL_DIR/rest
+  mkdir -p $INSTALL_DIR/service
+  
+  cp scripts/accords.ini $INSTALL_DIR
+  cp scripts/co-iaas-config $INSTALL_DIR
+  cp scripts/cords_user.xml $INSTALL_DIR
+  cp scripts/style.css $INSTALL_DIR
+  cp scripts/openssl.cnf $INSTALL_DIR
+  
+  cp manifests/cords_*.xml $INSTALL_DIR 
+  cp manifests/*.cnf $INSTALL_DIR 
+  
+  cp cordscripts/csp*.txt $INSTALL_DIR
+  
+  cp -r dashboard/* $INSTALL_DIR
+  chmod 755 $INSTALL_DIR/*.sh
+  
+  cp *.xml $INSTALL_DIR
+  cp *.crt $INSTALL_DIR
+  
+  cd $INSTALL_DIR
+  echo "Run 'accords-config' from $(pwd)"
+  accords-config
+}
+
+function _do_start {
+  echo -n "Start CO ?[Y/n]"
+  read a
+  if [ "Z$a" == "ZN" ] || [ "Z$a" == "Zn" ] ; then
+    echo "Bye!"
+  else
+    cd $INSTALL_DIR
+    co-start
+  fi
+}
+
+function _do_iaas_config {
+  cd $INSTALL_DIR
+  [ -f co-iaas-config ] && co-iaas-config
+}
+
+# -- main --
+
+_abort_if_no_libcocci
+_abort_if_running
+
+echo "Install configuration in $INSTALL_DIR"
+if [ -d "$INSTALL_DIR" ] ; then
+  echo -n "Directory $INSTALL_DIR already exist. Delete it ?[N/y] "
+  read a
+  if [ "Z$a" == "ZY" ] || [ "Z$a" == "Zy" ] ; then
+    rm -rf $INSTALL_DIR
+  else
+    echo "Configuration aborted!"
+    exit 1;
+  fi
+fi
+_do_config
+_do_iaas_config
+_do_start
+
