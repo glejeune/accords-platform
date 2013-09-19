@@ -208,6 +208,9 @@ testsuite/*.pyc
 tools/codegen/*.pyc
 tools/codegen/OCCI/*.pyc
 tools/codegen/OCCI/test/*.pyc
+tools/codegen/system_test/*.pyc
+tools/codegen/codegen_types/*.pyc
+tools/codegen/codegen_types/test/*.pyc
 python/*.pyc
 python/parsing/*.pyc
 python/test/*.pyc
