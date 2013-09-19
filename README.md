@@ -1,8 +1,10 @@
+<!-- 
 File : README 
 Project : COMPATIBLE ONE ACCORDS
 Author : Iain James Marshall, Grégoire Lejeune
 Created : 19th November 2011
 Updated : 19th September 2013
+-->
 
 # INTRODUCTION 
 
