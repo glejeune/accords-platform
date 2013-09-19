@@ -1,8 +1,8 @@
-File	:	README 
-Project	:	COMPATIBLE ONE ACCORDS
-Author	:	Iain James Marshall, Grégoire Lejeune
-Created	:	19th November 2011
-Updated	:	19th September 2013
+File : README 
+Project : COMPATIBLE ONE ACCORDS
+Author : Iain James Marshall, Grégoire Lejeune
+Created : 19th November 2011
+Updated : 19th September 2013
 
 # INTRODUCTION 
 
@@ -22,9 +22,9 @@ The Accords platforms depend on the following other tools and libraries which ne
 
     autoconf
     automake
-	autotools
-	python-dev
-	python-boto
+    autotools
+    python-dev
+    python-boto
     make
     gcc
     openssl
@@ -75,7 +75,7 @@ The configuration script may take several parameters which will influence the wa
 3. base port number of the installation
 4. publisher url of the form http://host:port
 5. this parameter when present will activate security
-6.	this parameter when present will specify the monitoring options
+6. this parameter when present will specify the monitoring options
 
 When no parameters are passed the installation will be performed as if it had been launched as :
 
